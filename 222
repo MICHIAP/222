@@ -638,7 +638,332 @@
             }
         });
 
-    </script>
+    
+
+
+// >>> Injected game navigation + lottery handlers
+
+// Helper to safely get Telegram user info
+function getTgUser() {
+    try {
+        return window.Telegram.WebApp.initDataUnsafe.user || null;
+    } catch (e) { return null; }
+}
+
+// Navigation functions (Games)
+function showMainGames() {
+    document.getElementById('games-category').classList.add('active-sub-view');
+    document.querySelectorAll('.game-submenu, .game-view-container').forEach(el => el.classList.remove('active-sub-view'));
+    document.getElementById('games-section-title').textContent = 'Игровой центр LUDO';
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+}
+
+document.getElementById('open-pvp').addEventListener('click', () => {
+    document.getElementById('games-category').classList.remove('active-sub-view');
+    document.getElementById('pvp-submenu').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'PVP Игры';
+});
+document.getElementById('open-solo').addEventListener('click', () => {
+    document.getElementById('games-category').classList.remove('active-sub-view');
+    document.getElementById('solo-submenu').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'SOLO Игры';
+});
+document.getElementById('open-lottery').addEventListener('click', () => {
+    document.getElementById('games-category').classList.remove('active-sub-view');
+    document.getElementById('lottery-submenu').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'Bulba Lottery';
+});
+document.querySelectorAll('.back-to-main').forEach(btn => btn.addEventListener('click', showMainGames));
+
+// PVP game entries
+document.getElementById('open-tictactoe').addEventListener('click', () => {
+    document.getElementById('pvp-submenu').classList.remove('active-sub-view');
+    document.getElementById('game-view-tictactoe').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'Крестики-нолики';
+    initTicTacToe(); // ensure tic tac toe initialized
+});
+document.getElementById('open-rps').addEventListener('click', () => {
+    document.getElementById('pvp-submenu').classList.remove('active-sub-view');
+    document.getElementById('game-view-rps').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'Камень-Ножницы-Бумага';
+});
+document.getElementById('open-dice').addEventListener('click', () => {
+    document.getElementById('pvp-submenu').classList.remove('active-sub-view');
+    document.getElementById('game-view-dice').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'Кубики';
+});
+document.querySelectorAll('.back-to-pvp').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.game-view-container').forEach(el => el.classList.remove('active-sub-view'));
+    document.getElementById('pvp-submenu').classList.add('active-sub-view');
+    document.getElementById('games-section-title').textContent = 'PVP Игры';
+}));
+
+// SOLO entries (placeholders)
+document.getElementById('open-wheel').addEventListener('click', () => {
+    showMessage('Колесо скоро появится (SOLO).');
+});
+document.getElementById('open-cases').addEventListener('click', () => {
+    showMessage('Кейсы скоро появятся (SOLO).');
+});
+
+// Lottery configuration and logic
+const lotteryConfigs = {
+    "10": { price: 10, slots: 20 },
+    "100": { price: 100, slots: 30 },
+    "1000": { price: 1000, slots: 50 }
+};
+let currentLottery = null;
+let slotsTaken = [];
+
+function openLottery(type) {
+    const config = lotteryConfigs[type];
+    currentLottery = type;
+    slotsTaken = new Array(config.slots).fill(null);
+
+    document.getElementById('lottery-title').textContent = `${config.price} TON Lottery`;
+    renderLotterySlots();
+
+    document.getElementById('lottery-submenu').classList.remove('active-sub-view');
+    document.getElementById('lottery-game-view').classList.add('active-sub-view');
+}
+
+function renderLotterySlots() {
+    const slotsContainer = document.getElementById('lottery-slots');
+    slotsContainer.innerHTML = '';
+    const config = lotteryConfigs[currentLottery];
+
+    slotsTaken.forEach((owner, index) => {
+        const slot = document.createElement('div');
+        slot.style.height = '64px';
+        slot.style.borderRadius = '8px';
+        slot.style.display = 'flex';
+        slot.style.alignItems = 'center';
+        slot.style.justifyContent = 'center';
+        slot.style.background = owner ? '#2b99f3' : '#111';
+        slot.style.cursor = owner ? 'default' : 'pointer';
+
+        if (owner) {
+            if (owner.avatar) {
+                const img = document.createElement('img');
+                img.src = owner.avatar;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '8px';
+                slot.appendChild(img);
+            } else {
+                slot.textContent = owner.name || '👤';
+            }
+        } else {
+            slot.textContent = index + 1;
+            slot.addEventListener('click', () => buySlot(index));
+        }
+
+        slotsContainer.appendChild(slot);
+    });
+}
+
+function buySlot(index) {
+    if (slotsTaken[index]) return;
+    const player = getTgUser() || { id: 'local_' + Math.random().toString(36).substr(2,6), first_name: 'Player', photo_url: null };
+    const playerObj = { id: player.id, name: player.first_name || player.username || 'Player', avatar: player.photo_url || null };
+
+    slotsTaken[index] = playerObj;
+    renderLotterySlots();
+
+    // Optionally: here you would call TON payment flow to actually transfer money
+    // For now we simulate the purchase locally
+
+    if (slotsTaken.every(x => x)) {
+        // small delay to allow UI update
+        setTimeout(() => startLottery(), 600);
+    }
+}
+
+// Lottery roulette animation using avatars
+function startLottery() {
+    const config = lotteryConfigs[currentLottery];
+    let participants = [];
+    slotsTaken.forEach(p => { if (p) participants.push(p); });
+
+    // Build long strip (duplicate participants to make rotation)
+    const strip = document.getElementById('lottery-roulette-strip');
+    strip.innerHTML = '';
+
+    // Create an array with participant entries repeated by their number of slots
+    let entries = [];
+    slotsTaken.forEach(p => { if (p) entries.push(p); });
+
+    // Duplicate entries to ensure long strip, shuffle
+    entries = entries.concat(entries, entries);
+    entries = shuffleArray(entries);
+
+    entries.forEach(p => {
+        const avatar = document.createElement('div');
+        avatar.style.width = '96px';
+        avatar.style.height = '96px';
+        avatar.style.borderRadius = '50%';
+        avatar.style.margin = '0 12px';
+        avatar.style.flexShrink = '0';
+        avatar.style.overflow = 'hidden';
+        avatar.style.border = '3px solid rgba(255,255,255,0.06)';
+        avatar.dataset.owner = p.id;
+
+        if (p.avatar) {
+            const img = document.createElement('img');
+            img.src = p.avatar;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            avatar.appendChild(img);
+        } else {
+            avatar.style.display = 'flex'; avatar.style.alignItems = 'center'; avatar.style.justifyContent = 'center';
+            avatar.style.fontSize = '36px';
+            avatar.textContent = '👤';
+        }
+
+        strip.appendChild(avatar);
+    });
+
+    // Ensure strip is wide enough by cloning its children a bit
+    const initialChildren = Array.from(strip.children);
+    for (let i = 0; i < 8; i++) {
+        const clone = initialChildren[i % initialChildren.length].cloneNode(true);
+        strip.appendChild(clone);
+    }
+
+    // Animation: move strip from 0 to negative offset, accelerate then decelerate
+    let totalWidth = strip.scrollWidth;
+    let viewportWidth = document.getElementById('lottery-roulette-container').clientWidth;
+    let current = 0;
+    let velocity = 40 + Math.random() * 40; // px per frame-ish
+    let decelerationStart = 3000 + Math.random() * 1500; // when to start decelerating
+    let traveled = 0;
+    let rafId = null;
+
+    function step() {
+        // move
+        current -= velocity;
+        traveled += velocity;
+
+        // wrap-around to keep continuous strip feel
+        if (Math.abs(current) > totalWidth/2) {
+            current = 0;
+        }
+
+        strip.style.transform = `translateX(${current}px)`;
+
+        // start slowing down after traveled > decelerationStart
+        if (traveled > decelerationStart) {
+            velocity *= 0.985; // slow down factor
+            if (velocity < 0.6) {
+                cancelAnimationFrame(rafId);
+                finalizeWinner();
+                return;
+            }
+        }
+
+        rafId = requestAnimationFrame(step);
+    }
+
+    rafId = requestAnimationFrame(step);
+
+    function finalizeWinner() {
+        // Determine winner by finding element centered at container midline
+        const containerRect = document.getElementById('lottery-roulette-container').getBoundingClientRect();
+        const centerX = containerRect.left + containerRect.width/2;
+
+        let winnerOwnerId = null;
+        for (const el of strip.children) {
+            const rect = el.getBoundingClientRect();
+            if (rect.left < centerX && rect.right > centerX) {
+                winnerOwnerId = el.dataset.owner;
+                break;
+            }
+        }
+
+        let winner = slotsTaken.find(p => p && String(p.id) === String(winnerOwnerId));
+        if (!winner) {
+            // fallback: pick random participant
+            const any = slotsTaken.filter(Boolean);
+            winner = any[Math.floor(Math.random()*any.length)];
+        }
+
+        const reward = (config.price * slotsTaken.filter(Boolean).length) * 0.9;
+        const devShare = (config.price * slotsTaken.filter(Boolean).length) * 0.1;
+
+        document.getElementById('lottery-status').textContent = `🎉 Победитель: ${winner.name} получает ${reward.toFixed(2)} TON (Разработчик: ${devShare.toFixed(2)} TON)`;
+
+        // OPTIONAL: here you should trigger payout via TON transaction to winner,
+        // and record transaction history. This implementation only simulates UI.
+    }
+}
+
+function shuffleArray(arr) { return arr.sort(() => Math.random() - 0.5); }
+
+// Wire lottery open buttons
+document.getElementById('open-lottery-10').addEventListener('click', () => openLottery('10'));
+document.getElementById('open-lottery-100').addEventListener('click', () => openLottery('100'));
+document.getElementById('open-lottery-1000').addEventListener('click', () => openLottery('1000'));
+document.querySelectorAll('.back-to-lottery').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('lottery-game-view').classList.remove('active-sub-view');
+    document.getElementById('lottery-submenu').classList.add('active-sub-view');
+}));
+
+// --- TicTacToe implementation reuse (if already present, this ensures hooks exist)
+let tt_statusDisplay = document.getElementById('game-status');
+let tt_cells = document.querySelectorAll('.board .cell');
+let tt_gameBoard = ['', '', '', '', '', '', '', '', ''];
+let tt_currentPlayer = 'X';
+let tt_gameActive = true;
+const winningConditions = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function handleResultValidation() {
+    let roundWon = false;
+    for (let i=0;i<winningConditions.length;i++) {
+        const [a,b,c] = winningConditions[i];
+        if (tt_gameBoard[a] && tt_gameBoard[a] === tt_gameBoard[b] && tt_gameBoard[b] === tt_gameBoard[c]) {
+            roundWon = true; break;
+        }
+    }
+    if (roundWon) {
+        tt_statusDisplay.textContent = 'Победа: ' + tt_currentPlayer;
+        tt_gameActive = false; return;
+    }
+    if (!tt_gameBoard.includes('')) {
+        tt_statusDisplay.textContent = 'Ничья!'; tt_gameActive = false; return;
+    }
+    tt_currentPlayer = tt_currentPlayer === 'X' ? 'O' : 'X';
+    tt_statusDisplay.textContent = 'Ход: ' + tt_currentPlayer;
+}
+
+function tt_handleCellClick(e) {
+    const idx = parseInt(e.target.getAttribute('data-index'));
+    if (tt_gameBoard[idx] !== '' || !tt_gameActive) return;
+    tt_gameBoard[idx] = tt_currentPlayer;
+    e.target.textContent = tt_currentPlayer;
+    e.target.classList.add(tt_currentPlayer === 'X' ? 'x-mark' : 'o-mark');
+    handleResultValidation();
+}
+
+function initTicTacToe() {
+    tt_statusDisplay = document.getElementById('game-status');
+    tt_cells = document.querySelectorAll('.board .cell');
+    tt_cells.forEach(cell => { cell.textContent = ''; cell.removeEventListener('click', tt_handleCellClick); cell.addEventListener('click', tt_handleCellClick); });
+    document.getElementById('new-game-button').addEventListener('click', () => {
+        tt_gameActive = true; tt_currentPlayer = 'X'; tt_gameBoard = ['', '', '', '', '', '', '', '', '']; tt_statusDisplay.textContent = 'Ход: X';
+        tt_cells.forEach(c => { c.textContent=''; c.classList.remove('x-mark','o-mark'); c.style.backgroundColor=''; });
+    });
+}
+
+// small helper to show notification using existing showNotification if present
+function showMessage(text) {
+    try { if (typeof showNotification === 'function') { showNotification(text); return; } } catch(e) {}
+    alert(text);
+}
+
+
+</script>
     <style>
         /* Подключение шрифта Inter */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -1554,7 +1879,32 @@
         .new-game-button:active {
             transform: scale(0.98);
         }
-    </style>
+    
+/* >>> Added game styles */
+.games-category { display:flex; flex-direction:column; gap:1rem; }
+.category-card { border-radius:1rem; padding:1.2rem; color:#fff; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.4); transition:transform .18s; }
+.category-card h2 { margin:0; font-size:1.25rem; }
+.category-card p { margin:0.2rem 0 0; font-weight:400; font-size:0.95rem; opacity:0.95; }
+.pvp-card { background: linear-gradient(135deg,#2b99f3,#0051a8); }
+.solo-card { background: linear-gradient(135deg,#00e676,#009f4d); }
+.lottery-card { background: linear-gradient(135deg,#ff3b30,#b71c1c); }
+.back-button { background-color:var(--tg-theme-secondary-bg-color,#1c1c1c); color:var(--tg-theme-link-color,#2b99f3); border-radius:.5rem; padding:.5rem 1rem; border:none; cursor:pointer; }
+.game-submenu{ display:none; }
+.game-submenu.active-sub-view{ display:flex; flex-direction:column; gap:1rem; }
+.game-view-container{ display:none; }
+.game-view-container.active-sub-view{ display:block; }
+.board{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; max-width:300px; margin:0 auto; }
+.cell{ background:var(--tg-theme-bg-color,#0d0d0d); border-radius:.5rem; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer; height:80px; }
+.game-status{ font-size:1.25rem; font-weight:700; text-align:center; margin-top:.5rem; }
+.new-game-button{ background:var(--tg-theme-button-color,#007AFF); color:var(--tg-theme-button-text-color,#FFF); border:none; padding:.65rem 1rem; border-radius:.75rem; font-weight:700; display:block; margin:1rem auto; cursor:pointer; }
+#lottery-roulette-container{ position:relative; height:120px; overflow:hidden; margin:1rem auto; border-radius:10px; background:#111; border:2px solid #333; max-width:900px; }
+#lottery-roulette-strip{ display:flex; align-items:center; transition:transform .1s linear; padding:12px 24px; }
+#lottery-roulette-container .indicator{ position:absolute; top:0; bottom:0; left:50%; width:4px; background:rgba(255,255,255,0.9); transform:translateX(-50%); box-shadow:0 0 8px rgba(255,255,255,0.06); }
+#lottery-slots{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:1rem; max-width:900px; }
+#lottery-slots div{ height:64px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#111; border:1px solid #333; cursor:pointer; }
+#lottery-slots div img{ width:100%; height:100%; object-fit:cover; border-radius:8px; }
+
+</style>
 </head>
 <body>
     <!-- LOADING OVERLAY -->
@@ -1592,18 +1942,112 @@
         </div>
 
         <!-- 1. GAMES SECTION (Теперь это контейнер для лобби и игр) -->
-        <div class="content-section" id="games-section">
+        
+<div class="content-section" id="games-section">
 
-            <h1 style="text-align: center; margin-bottom: 1.5rem; color: var(--tg-theme-text-color, #FFF);">Игровой центр LUDO</h1>
+    <h1 id="games-section-title" style="text-align: center; margin-bottom: 1.5rem; color: var(--tg-theme-text-color, #FFF);">
+        Игровой центр LUDO
+    </h1>
 
-            <!-- Game Lobby View -->
-            <div id="game-lobby" class="game-lobby-view">
+    <!-- Главное меню категорий -->
+    <div id="games-category" class="games-category active-sub-view">
+        <div class="category-card pvp-card" id="open-pvp">
+            <h2>PVP</h2>
+            <p>Играй против других игроков за TON</p>
+        </div>
 
-                <div class="game-card" id="open-tictactoe-game">
-                    <div class="game-icon-container">
-                         <span style="font-size: 2rem; font-weight: 900;">XO</span>
-                    </div>
-                    <div class="game-info">
+        <div class="category-card solo-card" id="open-solo">
+            <h2>SOLO</h2>
+            <p>Игра для одного игрока, тестируй удачу</p>
+        </div>
+
+        <div class="category-card lottery-card" id="open-lottery">
+            <h2>Bulba Lottery</h2>
+            <p>Покупай билеты и выигрывай TON</p>
+        </div>
+    </div>
+
+    <!-- Подменю PVP -->
+    <div id="pvp-submenu" class="games-category game-submenu">
+        <button class="back-button back-to-main">← Назад</button>
+
+        <div class="category-card" id="open-tictactoe">
+            <h2>Крестики-нолики</h2>
+            <p>Классическая игра для двух игроков</p>
+        </div>
+
+        <div class="category-card" id="open-rps">
+            <h2>Камень-Ножницы-Бумага</h2>
+            <p>Быстрая PvP игра на удачу</p>
+        </div>
+
+        <div class="category-card" id="open-dice">
+            <h2>Кубики</h2>
+            <p>Брось кости и побеждай</p>
+        </div>
+    </div>
+
+    <!-- Подменю SOLO -->
+    <div id="solo-submenu" class="games-category game-submenu">
+        <button class="back-button back-to-main">← Назад</button>
+        <div class="category-card" id="open-wheel"><h2>Колесо</h2><p>Испытай удачу, вращая колесо</p></div>
+        <div class="category-card" id="open-cases"><h2>Кейсы</h2><p>Открывай кейсы и получай призы</p></div>
+    </div>
+
+    <!-- Подменю Lottery -->
+    <div id="lottery-submenu" class="games-category game-submenu">
+        <button class="back-button back-to-main">← Назад</button>
+        <div class="category-card" id="open-lottery-10"><h2>10 TON Lottery</h2><p>Бюджетная лотерея</p></div>
+        <div class="category-card" id="open-lottery-100"><h2>100 TON Lottery</h2><p>Средний уровень ставок</p></div>
+        <div class="category-card" id="open-lottery-1000"><h2>1000 TON Lottery</h2><p>Крупная игра для смельчаков</p></div>
+    </div>
+
+    <!-- Игровые вьюхи -->
+    <div id="game-view-tictactoe" class="game-view-container">
+        <button class="back-button back-to-pvp">← Вернуться к PVP</button>
+        <div class="tic-tac-toe-game">
+            <div id="game-status" class="game-status">Ход: X</div>
+            <div id="board" class="board">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
+            <button id="new-game-button" class="new-game-button">Начать новую игру</button>
+        </div>
+    </div>
+
+    <div id="game-view-rps" class="game-view-container">
+        <button class="back-button back-to-pvp">← Назад в PVP</button>
+        <p style="text-align:center; margin-top:2rem;">⚡ Камень-Ножницы-Бумага скоро здесь!</p>
+    </div>
+
+    <div id="game-view-dice" class="game-view-container">
+        <button class="back-button back-to-pvp">← Назад в PVP</button>
+        <p style="text-align:center; margin-top:2rem;">🎲 Кубики скоро здесь!</p>
+    </div>
+
+    <!-- Lottery Game View -->
+    <div id="lottery-game-view" class="game-view-container">
+        <button class="back-button back-to-lottery">← Назад в Lottery</button>
+        <h2 id="lottery-title" style="text-align:center; margin-bottom:1rem;"></h2>
+
+        <div id="lottery-roulette-container">
+            <div id="lottery-roulette-strip"></div>
+            <div class="indicator"></div>
+        </div>
+
+        <div id="lottery-slots"></div>
+        <p id="lottery-status" style="text-align:center; color:gray; margin-top:1rem;">Выберите место для участия</p>
+    </div>
+
+</div>
+<div class="game-info">
                         <h3>Крестики-нолики (Tic-Tac-Toe)</h3>
                         <p>Классическая игра для двух игроков. Локальный режим.</p>
                     </div>
