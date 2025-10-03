@@ -161,7 +161,6 @@
         }
 
         const sections = {
-            'menu-games': 'games-section',
             'menu-top': 'top-section',
             'menu-invite': 'invite-section',
             'menu-profile': 'profile-section',
@@ -177,7 +176,7 @@
             });
 
             // Специальная обработка для Deposit: активируем Games, чтобы раздел Profile не открывался
-            const activeMenuId = (menuItemId === 'menu-deposit') ? 'menu-games' : menuItemId;
+            const activeMenuId = (menuItemId === 'menu-deposit') ? 'menu-profile' : menuItemId;
 
             const activeMenuItem = document.getElementById(activeMenuId);
             if (activeMenuItem) {
@@ -188,7 +187,7 @@
                 section.classList.remove('active');
             });
 
-            const targetSectionId = (menuItemId === 'menu-deposit') ? 'games-section' : sectionId;
+            const targetSectionId = (menuItemId === 'menu-deposit') ? 'profile-section' : sectionId;
             const activeSection = document.getElementById(targetSectionId);
             if (activeSection) {
                 activeSection.classList.add('active');
@@ -294,9 +293,7 @@
             const refLinkBase = "https://t.me/ludobulba_bot?start=ref_";
             document.getElementById('referral-link').textContent = `${refLinkBase}${currentId.substring(0, 8)}`;
 
-            if (!document.querySelector('.content-section.active')) {
-                 setActiveSection('menu-games');
-            }
+            
         }
 
         document.getElementById('copy-referral-link').addEventListener('click', (e) => {
@@ -486,144 +483,14 @@
             }
         }
 
-        // --- ЛОГИКА ИГРОВОЙ НАВИГАЦИИ ВНУТРИ GAMES-SECTION ---
-        function showGameLobby() {
-            document.getElementById('game-lobby').classList.add('active-sub-view');
-            document.getElementById('game-view-tictactoe').classList.remove('active-sub-view');
-            document.querySelector('#games-section h1').textContent = 'Игровой центр LUDO';
-            window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
-        }
+        
 
-        function showTicTacToe() {
-            document.getElementById('game-lobby').classList.remove('active-sub-view');
-            document.getElementById('game-view-tictactoe').classList.add('active-sub-view');
-            document.querySelector('#games-section h1').textContent = 'Крестики-нолики';
-            window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
-        }
-        // --- КОНЕЦ ЛОГИКИ ИГРОВОЙ НАВИГАЦИИ ---
-
-        // --- ЛОГИКА ИГРЫ "КРЕСТИКИ-НОЛИКИ" (Tic-Tac-Toe) ---
-        let gameBoard = ['', '', '', '', '', '', '', '', ''];
-        let currentPlayer = 'X';
-        let gameActive = true;
-
-        let statusDisplay;
-        let cells;
-
-        const winningConditions = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Строки
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Столбцы
-            [0, 4, 8], [2, 4, 6]             // Диагонали
-        ];
-
-        function handleResultValidation() {
-            let roundWon = false;
-            let winningLine = null;
-            for (let i = 0; i < winningConditions.length; i++) {
-                const winCondition = winningConditions[i];
-                let a = gameBoard[winCondition[0]];
-                let b = gameBoard[winCondition[1]];
-                let c = gameBoard[winCondition[2]];
-
-                if (a === '' || b === '' || c === '') {
-                    continue; // Пропускаем, если еще есть пустые ячейки
-                }
-                if (a === b && b === c) {
-                    roundWon = true;
-                    winningLine = winCondition;
-                    break;
-                }
-            }
-
-            if (roundWon) {
-                statusDisplay.innerHTML = `Победитель: <span style="color: ${currentPlayer === 'X' ? 'var(--tg-theme-link-color)' : 'var(--tg-theme-destructive-text-color)'};">${currentPlayer}</span>!`;
-                gameActive = false;
-                window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
-                // Визуальное выделение выигрышной линии
-                if (cells) {
-                    winningLine.forEach(index => cells[index].style.backgroundColor = 'rgba(0, 230, 118, 0.4)');
-                }
-                return;
-            }
-
-            let roundDraw = !gameBoard.includes('');
-            if (roundDraw) {
-                statusDisplay.textContent = 'Ничья!';
-                gameActive = false;
-                window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('warning');
-                return;
-            }
-
-            changePlayer();
-        }
-
-        function changePlayer() {
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            statusDisplay.textContent = `Ход: ${currentPlayer}`;
-        }
-
-        function handleCellClick(clickedCellEvent) {
-            const clickedCell = clickedCellEvent.target;
-            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
-
-            // Проверка: игра активна? ячейка занята?
-            if (gameBoard[clickedCellIndex] !== '' || !gameActive) {
-                return;
-            }
-
-            // Обновление состояния игры
-            gameBoard[clickedCellIndex] = currentPlayer;
-
-            // Обновление UI
-            clickedCell.textContent = currentPlayer;
-            clickedCell.classList.add(currentPlayer === 'X' ? 'x-mark' : 'o-mark');
-
-            window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
-
-            // Проверка на победу или ничью
-            handleResultValidation();
-        }
-
-        function handleRestartGame() {
-            gameActive = true;
-            currentPlayer = 'X';
-            gameBoard = ['', '', '', '', '', '', '', '', ''];
-            if (statusDisplay) {
-                 statusDisplay.textContent = 'Ход: X';
-            }
-
-
-            if (cells) {
-                cells.forEach(cell => {
-                    cell.textContent = '';
-                    cell.classList.remove('x-mark', 'o-mark');
-                    cell.style.backgroundColor = 'var(--tg-theme-bg-color, #0d0d0d)'; // Сброс фона
-                });
-            }
-            window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
-            showNotification('Новая игра началась!');
-        }
-        // --- КОНЕЦ ЛОГИКИ ИГРЫ "КРЕСТИКИ-НОЛИКИ" ---
+        
 
 
         // --- Final Initialization Call ---
         window.addEventListener('load', () => {
-            // Инициализация переменных для Крестиков-ноликов
-            statusDisplay = document.getElementById('game-status');
-            cells = document.querySelectorAll('.board .cell');
-
-            // Привязка слушателей для Крестиков-ноликов
-            cells.forEach(cell => {
-                cell.addEventListener('click', handleCellClick);
-            });
-            document.getElementById('new-game-button').addEventListener('click', handleRestartGame);
-
-            // Привязка слушателей для навигации по играм
-            document.getElementById('open-tictactoe-game').addEventListener('click', showTicTacToe);
-            document.getElementById('back-to-lobby-button').addEventListener('click', () => {
-                // При возврате к лобби, перезапускаем игру
-                handleRestartGame();
-                showGameLobby();
+            
             });
 
 
@@ -638,280 +505,7 @@
             }
         });
 
-    
-
-
-// >>> Injected game navigation + lottery handlers
-
-// Helper to safely get Telegram user info
-function getTgUser() {
-    try {
-        return window.Telegram.WebApp.initDataUnsafe.user || null;
-    } catch (e) { return null; }
-}
-
-// Navigation functions (Games)
-function showMainGames() {
-    document.getElementById('games-category').classList.add('active-sub-view');
-    document.querySelectorAll('.game-submenu, .game-view-container').forEach(el => el.classList.remove('active-sub-view'));
-    document.getElementById('games-section-title').textContent = 'Игровой центр LUDO';
-    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
-}
-
-document.getElementById('open-pvp').addEventListener('click', () => {
-    document.getElementById('games-category').classList.remove('active-sub-view');
-    document.getElementById('pvp-submenu').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'PVP Игры';
-});
-document.getElementById('open-solo').addEventListener('click', () => {
-    document.getElementById('games-category').classList.remove('active-sub-view');
-    document.getElementById('solo-submenu').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'SOLO Игры';
-});
-document.getElementById('open-lottery').addEventListener('click', () => {
-    document.getElementById('games-category').classList.remove('active-sub-view');
-    document.getElementById('lottery-submenu').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'Bulba Lottery';
-});
-document.querySelectorAll('.back-to-main').forEach(btn => btn.addEventListener('click', showMainGames));
-
-// PVP game entries
-function showMessage
-document.getElementById('open-rps').addEventListener('click', () => {
-    document.getElementById('pvp-submenu').classList.remove('active-sub-view');
-    document.getElementById('game-view-rps').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'Камень-Ножницы-Бумага';
-});
-document.getElementById('open-dice').addEventListener('click', () => {
-    document.getElementById('pvp-submenu').classList.remove('active-sub-view');
-    document.getElementById('game-view-dice').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'Кубики';
-});
-document.querySelectorAll('.back-to-pvp').forEach(btn => btn.addEventListener('click', () => {
-    document.querySelectorAll('.game-view-container').forEach(el => el.classList.remove('active-sub-view'));
-    document.getElementById('pvp-submenu').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'PVP Игры';
-}));
-
-// SOLO entries (placeholders)
-document.getElementById('open-wheel').addEventListener('click', () => {
-    showMessage('Колесо скоро появится (SOLO).');
-});
-document.getElementById('open-cases').addEventListener('click', () => {
-    showMessage('Кейсы скоро появятся (SOLO).');
-});
-
-// Lottery configuration and logic
-const lotteryConfigs = {
-    "10": { price: 10, slots: 20 },
-    "100": { price: 100, slots: 30 },
-    "1000": { price: 1000, slots: 50 }
-};
-let currentLottery = null;
-let slotsTaken = [];
-
-function openLottery(type) {
-    const config = lotteryConfigs[type];
-    currentLottery = type;
-    slotsTaken = new Array(config.slots).fill(null);
-
-    document.getElementById('lottery-title').textContent = `${config.price} TON Lottery`;
-    renderLotterySlots();
-
-    document.getElementById('lottery-submenu').classList.remove('active-sub-view');
-    document.getElementById('lottery-game-view').classList.add('active-sub-view');
-}
-
-function renderLotterySlots() {
-    const slotsContainer = document.getElementById('lottery-slots');
-    slotsContainer.innerHTML = '';
-    const config = lotteryConfigs[currentLottery];
-
-    slotsTaken.forEach((owner, index) => {
-        const slot = document.createElement('div');
-        slot.style.height = '64px';
-        slot.style.borderRadius = '8px';
-        slot.style.display = 'flex';
-        slot.style.alignItems = 'center';
-        slot.style.justifyContent = 'center';
-        slot.style.background = owner ? '#2b99f3' : '#111';
-        slot.style.cursor = owner ? 'default' : 'pointer';
-
-        if (owner) {
-            if (owner.avatar) {
-                const img = document.createElement('img');
-                img.src = owner.avatar;
-                img.style.width = '100%';
-                img.style.height = '100%';
-                img.style.objectFit = 'cover';
-                img.style.borderRadius = '8px';
-                slot.appendChild(img);
-            } else {
-                slot.textContent = owner.name || '👤';
-            }
-        } else {
-            slot.textContent = index + 1;
-            slot.addEventListener('click', () => buySlot(index));
-        }
-
-        slotsContainer.appendChild(slot);
-    });
-}
-
-function buySlot(index) {
-    if (slotsTaken[index]) return;
-    const player = getTgUser() || { id: 'local_' + Math.random().toString(36).substr(2,6), first_name: 'Player', photo_url: null };
-    const playerObj = { id: player.id, name: player.first_name || player.username || 'Player', avatar: player.photo_url || null };
-
-    slotsTaken[index] = playerObj;
-    renderLotterySlots();
-
-    // Optionally: here you would call TON payment flow to actually transfer money
-    // For now we simulate the purchase locally
-
-    if (slotsTaken.every(x => x)) {
-        // small delay to allow UI update
-        setTimeout(() => startLottery(), 600);
-    }
-}
-
-// Lottery roulette animation using avatars
-function startLottery() {
-    const config = lotteryConfigs[currentLottery];
-    let participants = [];
-    slotsTaken.forEach(p => { if (p) participants.push(p); });
-
-    // Build long strip (duplicate participants to make rotation)
-    const strip = document.getElementById('lottery-roulette-strip');
-    strip.innerHTML = '';
-
-    // Create an array with participant entries repeated by their number of slots
-    let entries = [];
-    slotsTaken.forEach(p => { if (p) entries.push(p); });
-
-    // Duplicate entries to ensure long strip, shuffle
-    entries = entries.concat(entries, entries);
-    entries = shuffleArray(entries);
-
-    entries.forEach(p => {
-        const avatar = document.createElement('div');
-        avatar.style.width = '96px';
-        avatar.style.height = '96px';
-        avatar.style.borderRadius = '50%';
-        avatar.style.margin = '0 12px';
-        avatar.style.flexShrink = '0';
-        avatar.style.overflow = 'hidden';
-        avatar.style.border = '3px solid rgba(255,255,255,0.06)';
-        avatar.dataset.owner = p.id;
-
-        if (p.avatar) {
-            const img = document.createElement('img');
-            img.src = p.avatar;
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'cover';
-            avatar.appendChild(img);
-        } else {
-            avatar.style.display = 'flex'; avatar.style.alignItems = 'center'; avatar.style.justifyContent = 'center';
-            avatar.style.fontSize = '36px';
-            avatar.textContent = '👤';
-        }
-
-        strip.appendChild(avatar);
-    });
-
-    // Ensure strip is wide enough by cloning its children a bit
-    const initialChildren = Array.from(strip.children);
-    for (let i = 0; i < 8; i++) {
-        const clone = initialChildren[i % initialChildren.length].cloneNode(true);
-        strip.appendChild(clone);
-    }
-
-    // Animation: move strip from 0 to negative offset, accelerate then decelerate
-    let totalWidth = strip.scrollWidth;
-    let viewportWidth = document.getElementById('lottery-roulette-container').clientWidth;
-    let current = 0;
-    let velocity = 40 + Math.random() * 40; // px per frame-ish
-    let decelerationStart = 3000 + Math.random() * 1500; // when to start decelerating
-    let traveled = 0;
-    let rafId = null;
-
-    function step() {
-        // move
-        current -= velocity;
-        traveled += velocity;
-
-        // wrap-around to keep continuous strip feel
-        if (Math.abs(current) > totalWidth/2) {
-            current = 0;
-        }
-
-        strip.style.transform = `translateX(${current}px)`;
-
-        // start slowing down after traveled > decelerationStart
-        if (traveled > decelerationStart) {
-            velocity *= 0.985; // slow down factor
-            if (velocity < 0.6) {
-                cancelAnimationFrame(rafId);
-                finalizeWinner();
-                return;
-            }
-        }
-
-        rafId = requestAnimationFrame(step);
-    }
-
-    rafId = requestAnimationFrame(step);
-
-    function finalizeWinner() {
-        // Determine winner by finding element centered at container midline
-        const containerRect = document.getElementById('lottery-roulette-container').getBoundingClientRect();
-        const centerX = containerRect.left + containerRect.width/2;
-
-        let winnerOwnerId = null;
-        for (const el of strip.children) {
-            const rect = el.getBoundingClientRect();
-            if (rect.left < centerX && rect.right > centerX) {
-                winnerOwnerId = el.dataset.owner;
-                break;
-            }
-        }
-
-        let winner = slotsTaken.find(p => p && String(p.id) === String(winnerOwnerId));
-        if (!winner) {
-            // fallback: pick random participant
-            const any = slotsTaken.filter(Boolean);
-            winner = any[Math.floor(Math.random()*any.length)];
-        }
-
-        const reward = (config.price * slotsTaken.filter(Boolean).length) * 0.9;
-        const devShare = (config.price * slotsTaken.filter(Boolean).length) * 0.1;
-
-        document.getElementById('lottery-status').textContent = `🎉 Победитель: ${winner.name} получает ${reward.toFixed(2)} TON (Разработчик: ${devShare.toFixed(2)} TON)`;
-
-        // OPTIONAL: here you should trigger payout via TON transaction to winner,
-        // and record transaction history. This implementation only simulates UI.
-    }
-}
-
-function shuffleArray(arr) { return arr.sort(() => Math.random() - 0.5); }
-
-// Wire lottery open buttons
-document.getElementById('open-lottery-10').addEventListener('click', () => openLottery('10'));
-document.getElementById('open-lottery-100').addEventListener('click', () => openLottery('100'));
-document.getElementById('open-lottery-1000').addEventListener('click', () => openLottery('1000'));
-document.querySelectorAll('.back-to-lottery').forEach(btn => btn.addEventListener('click', () => {
-    document.getElementById('lottery-game-view').classList.remove('active-sub-view');
-    document.getElementById('lottery-submenu').classList.add('active-sub-view');
-}));
-
-function showMessage(text) {
-    try { if (typeof showNotification === 'function') { showNotification(text); return; } } catch(e) {}
-    alert(text);
-}
-
-
-</script>
+    </script>
     <style>
         /* Подключение шрифта Inter */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -1665,13 +1259,8 @@ function showMessage(text) {
         /* ------------------------------------ */
         /* СТИЛИ ЛОББИ И ВНУТРЕННЕЙ НАВИГАЦИИ */
         /* ------------------------------------ */
-        .game-lobby-view, .game-view-container {
-            width: 100%;
-            display: none; /* Контролируется JS */
-        }
-        .game-lobby-view.active-sub-view, .game-view-container.active-sub-view {
-            display: block;
-        }
+        
+        
 
         .back-button {
              background-color: var(--tg-theme-secondary-bg-color, #1c1c1c);
@@ -1694,25 +1283,9 @@ function showMessage(text) {
         }
 
         /* Стили карточки игры */
-        .game-card {
-            background-color: var(--tg-theme-secondary-bg-color, #1c1c1c);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            transition: background-color 0.1s ease;
-            border: 1px solid var(--tg-theme-secondary-bg-color, #1c1c1c);
-        }
-        .game-card:hover:not(.disabled) {
-            background-color: var(--tg-theme-secondary-bg-color, #282828);
-            border-color: var(--tg-theme-link-color, #2b99f3);
-        }
-        .game-card.disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        
+        
+        
 
         .game-icon-container {
             width: 3rem;
@@ -1754,105 +1327,8 @@ function showMessage(text) {
         /* ----- КОНЕЦ СТИЛЕЙ ЛОББИ ----- */
 
 
-        /* ----- TIC-TAC-TOE STYLES (Крестики-нолики) ----- */
-        .tic-tac-toe-game {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-            margin-top: 0.5rem;
-            max-width: 300px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .board {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-gap: 0.5rem;
-            width: 100%;
-            aspect-ratio: 1 / 1; /* Обеспечивает квадратную форму */
-            background-color: var(--tg-theme-secondary-bg-color, #1c1c1c);
-            padding: 0.5rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-        }
-
-        .cell {
-            background-color: var(--tg-theme-bg-color, #0d0d0d);
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            font-weight: 900;
-            color: var(--tg-theme-text-color, #FFF);
-            cursor: pointer;
-            user-select: none;
-            transition: background-color 0.1s ease, transform 0.1s ease;
-            line-height: 1; /* Важно для центрирования символов */
-        }
-
-        .cell:hover {
-            background-color: var(--tg-theme-secondary-bg-color, #1c1c1c);
-        }
-
-        .cell.x-mark {
-            color: var(--tg-theme-link-color, #2b99f3); /* Синий для X */
-        }
-        .cell.o-mark {
-            color: var(--tg-theme-destructive-text-color, #FF3B30); /* Красный для O */
-        }
-
-        .game-status {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--tg-theme-text-color, #FFF);
-            text-align: center;
-        }
-
-        .new-game-button {
-             background-color: var(--tg-theme-button-color, #007AFF);
-             color: var(--tg-theme-button-text-color, #FFF);
-             border: none;
-             border-radius: 0.75rem;
-             padding: 0.75rem 1.5rem;
-             font-size: 1rem;
-             font-weight: 700;
-             cursor: pointer;
-             transition: background-color 0.2s, transform 0.1s;
-             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-             -webkit-tap-highlight-color: transparent;
-        }
-        .new-game-button:active {
-            transform: scale(0.98);
-        }
-    
-/* >>> Added game styles */
-.games-category { display:flex; flex-direction:column; gap:1rem; }
-.category-card { border-radius:1rem; padding:1.2rem; color:#fff; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.4); transition:transform .18s; }
-.category-card h2 { margin:0; font-size:1.25rem; }
-.category-card p { margin:0.2rem 0 0; font-weight:400; font-size:0.95rem; opacity:0.95; }
-.pvp-card { background: linear-gradient(135deg,#2b99f3,#0051a8); }
-.solo-card { background: linear-gradient(135deg,#00e676,#009f4d); }
-.lottery-card { background: linear-gradient(135deg,#ff3b30,#b71c1c); }
-.back-button { background-color:var(--tg-theme-secondary-bg-color,#1c1c1c); color:var(--tg-theme-link-color,#2b99f3); border-radius:.5rem; padding:.5rem 1rem; border:none; cursor:pointer; }
-.game-submenu{ display:none; }
-.game-submenu.active-sub-view{ display:flex; flex-direction:column; gap:1rem; }
-.game-view-container{ display:none; }
-.game-view-container.active-sub-view{ display:block; }
-.board{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; max-width:300px; margin:0 auto; }
-.cell{ background:var(--tg-theme-bg-color,#0d0d0d); border-radius:.5rem; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer; height:80px; }
-.game-status{ font-size:1.25rem; font-weight:700; text-align:center; margin-top:.5rem; }
-.new-game-button{ background:var(--tg-theme-button-color,#007AFF); color:var(--tg-theme-button-text-color,#FFF); border:none; padding:.65rem 1rem; border-radius:.75rem; font-weight:700; display:block; margin:1rem auto; cursor:pointer; }
-#lottery-roulette-container{ position:relative; height:120px; overflow:hidden; margin:1rem auto; border-radius:10px; background:#111; border:2px solid #333; max-width:900px; }
-#lottery-roulette-strip{ display:flex; align-items:center; transition:transform .1s linear; padding:12px 24px; }
-#lottery-roulette-container .indicator{ position:absolute; top:0; bottom:0; left:50%; width:4px; background:rgba(255,255,255,0.9); transform:translateX(-50%); box-shadow:0 0 8px rgba(255,255,255,0.06); }
-#lottery-slots{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:1rem; max-width:900px; }
-#lottery-slots div{ height:64px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#111; border:1px solid #333; cursor:pointer; }
-#lottery-slots div img{ width:100%; height:100%; object-fit:cover; border-radius:8px; }
-
-</style>
+        
+    </style>
 </head>
 <body>
     <!-- LOADING OVERLAY -->
@@ -1889,147 +1365,7 @@ function showMessage(text) {
             </div>
         </div>
 
-        <!-- 1. GAMES SECTION (Теперь это контейнер для лобби и игр) -->
         
-<div class="content-section" id="games-section">
-
-    <h1 id="games-section-title" style="text-align: center; margin-bottom: 1.5rem; color: var(--tg-theme-text-color, #FFF);">
-        Игровой центр LUDO
-    </h1>
-
-    <!-- Главное меню категорий -->
-    <div id="games-category" class="games-category active-sub-view">
-        <div class="category-card pvp-card" id="open-pvp">
-            <h2>PVP</h2>
-            <p>Играй против других игроков за TON</p>
-        </div>
-
-        <div class="category-card solo-card" id="open-solo">
-            <h2>SOLO</h2>
-            <p>Игра для одного игрока, тестируй удачу</p>
-        </div>
-
-        <div class="category-card lottery-card" id="open-lottery">
-            <h2>Bulba Lottery</h2>
-            <p>Покупай билеты и выигрывай TON</p>
-        </div>
-    </div>
-
-    <!-- Подменю PVP -->
-    <div id="pvp-submenu" class="games-category game-submenu">
-        <button class="back-button back-to-main">← Назад</button>
-
-        
-
-        <div class="category-card" id="open-rps">
-            <h2>Камень-Ножницы-Бумага</h2>
-            <p>Быстрая PvP игра на удачу</p>
-        </div>
-
-        <div class="category-card" id="open-dice">
-            <h2>Кубики</h2>
-            <p>Брось кости и побеждай</p>
-        </div>
-    </div>
-
-    <!-- Подменю SOLO -->
-    <div id="solo-submenu" class="games-category game-submenu">
-        <button class="back-button back-to-main">← Назад</button>
-        <div class="category-card" id="open-wheel"><h2>Колесо</h2><p>Испытай удачу, вращая колесо</p></div>
-        <div class="category-card" id="open-cases"><h2>Кейсы</h2><p>Открывай кейсы и получай призы</p></div>
-    </div>
-
-    <!-- Подменю Lottery -->
-    <div id="lottery-submenu" class="games-category game-submenu">
-        <button class="back-button back-to-main">← Назад</button>
-        <div class="category-card" id="open-lottery-10"><h2>10 TON Lottery</h2><p>Бюджетная лотерея</p></div>
-        <div class="category-card" id="open-lottery-100"><h2>100 TON Lottery</h2><p>Средний уровень ставок</p></div>
-        <div class="category-card" id="open-lottery-1000"><h2>1000 TON Lottery</h2><p>Крупная игра для смельчаков</p></div>
-    </div>
-
-    <!-- Игровые вьюхи -->
-    <div id="board" class="board">
-                <div class="cell" data-index="0"></div>
-                <div class="cell" data-index="1"></div>
-                <div class="cell" data-index="2"></div>
-                <div class="cell" data-index="3"></div>
-                <div class="cell" data-index="4"></div>
-                <div class="cell" data-index="5"></div>
-                <div class="cell" data-index="6"></div>
-                <div class="cell" data-index="7"></div>
-                <div class="cell" data-index="8"></div>
-            </div>
-            <button id="new-game-button" class="new-game-button">Начать новую игру</button>
-        </div>
-    </div>
-
-    <div id="game-view-rps" class="game-view-container">
-        <button class="back-button back-to-pvp">← Назад в PVP</button>
-        <p style="text-align:center; margin-top:2rem;">⚡ Камень-Ножницы-Бумага скоро здесь!</p>
-    </div>
-
-    <div id="game-view-dice" class="game-view-container">
-        <button class="back-button back-to-pvp">← Назад в PVP</button>
-        <p style="text-align:center; margin-top:2rem;">🎲 Кубики скоро здесь!</p>
-    </div>
-
-    <!-- Lottery Game View -->
-    <div id="lottery-game-view" class="game-view-container">
-        <button class="back-button back-to-lottery">← Назад в Lottery</button>
-        <h2 id="lottery-title" style="text-align:center; margin-bottom:1rem;"></h2>
-
-        <div id="lottery-roulette-container">
-            <div id="lottery-roulette-strip"></div>
-            <div class="indicator"></div>
-        </div>
-
-        <div id="lottery-slots"></div>
-        <p id="lottery-status" style="text-align:center; color:gray; margin-top:1rem;">Выберите место для участия</p>
-    </div>
-
-</div>
-<div class="game-info">
-                        <h3>Крестики-нолики (Tic-Tac-Toe)</h3>
-                        <p>Классическая игра для двух игроков. Локальный режим.</p>
-                    </div>
-                    <div class="game-arrow">→</div>
-                </div>
-                <!-- Placeholder for Ludo -->
-                <div class="game-card disabled">
-                    <div class="game-icon-container" style="background-color: #555;">
-                         <img src="https://placehold.co/40/888/333?text=LUDO" alt="Ludo Icon" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0) invert(0.8);">
-                    </div>
-                    <div class="game-info">
-                        <h3>Ludo (Скоро!)</h3>
-                        <p>Многопользовательские столы на TON. PvP.</p>
-                    </div>
-                    <div class="game-arrow">🔒</div>
-                </div>
-
-                <p style="text-align: center; font-size: 1rem; color: var(--tg-theme-hint-color, #aaa); padding-top: 2rem;">
-                    Скоро здесь появятся мультиплеерные столы Ludo на TON.
-                </p>
-            </div>
-
-            <!-- Tic-Tac-Toe Game View -->
-            <div id="board" class="board">
-                        <!-- Ячейки для игры Крестики-нолики (Tic-Tac-Toe) -->
-                        <div class="cell" data-index="0"></div>
-                        <div class="cell" data-index="1"></div>
-                        <div class="cell" data-index="2"></div>
-                        <div class="cell" data-index="3"></div>
-                        <div class="cell" data-index="4"></div>
-                        <div class="cell" data-index="5"></div>
-                        <div class="cell" data-index="6"></div>
-                        <div class="cell" data-index="7"></div>
-                        <div class="cell" data-index="8"></div>
-                    </div>
-                    <button id="new-game-button" class="new-game-button">Начать новую игру</button>
-                </div>
-            </div>
-
-        </div>
-        <!-- КОНЕЦ 1. GAMES SECTION -->
 
         <!-- 2. PROFILE SECTION -->
         <div class="content-section" id="profile-section">
@@ -2129,10 +1465,7 @@ function showMessage(text) {
 
         <!-- BOTTOM MENU -->
         <div class="bottom-menu-container">
-            <div class="menu-item" id="menu-games">
-                <img src="https://raw.githubusercontent.com/MICHIAP/tonconnect-manifest.json/Images/00FEAD71-16A4-4A5B-803B-69AAF6EFF47D.png" alt="Игры" class="color-icon">
-                <span>Games</span>
-            </div>
+            
             <div class="menu-item" id="menu-top">
                 <img src="https://raw.githubusercontent.com/MICHIAP/tonconnect-manifest.json/Images/0CB7E2FF-690F-43A7-9D28-574B423027E3.png" alt="Топ" class="color-icon">
                 <span>Top</span>
