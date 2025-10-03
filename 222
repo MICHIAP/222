@@ -676,12 +676,7 @@ document.getElementById('open-lottery').addEventListener('click', () => {
 document.querySelectorAll('.back-to-main').forEach(btn => btn.addEventListener('click', showMainGames));
 
 // PVP game entries
-document.getElementById('open-tictactoe').addEventListener('click', () => {
-    document.getElementById('pvp-submenu').classList.remove('active-sub-view');
-    document.getElementById('game-view-tictactoe').classList.add('active-sub-view');
-    document.getElementById('games-section-title').textContent = 'Крестики-нолики';
-    initTicTacToe(); // ensure tic tac toe initialized
-});
+function showMessage
 document.getElementById('open-rps').addEventListener('click', () => {
     document.getElementById('pvp-submenu').classList.remove('active-sub-view');
     document.getElementById('game-view-rps').classList.add('active-sub-view');
@@ -910,53 +905,6 @@ document.querySelectorAll('.back-to-lottery').forEach(btn => btn.addEventListene
     document.getElementById('lottery-submenu').classList.add('active-sub-view');
 }));
 
-// --- TicTacToe implementation reuse (if already present, this ensures hooks exist)
-let tt_statusDisplay = document.getElementById('game-status');
-let tt_cells = document.querySelectorAll('.board .cell');
-let tt_gameBoard = ['', '', '', '', '', '', '', '', ''];
-let tt_currentPlayer = 'X';
-let tt_gameActive = true;
-const winningConditions = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-
-function handleResultValidation() {
-    let roundWon = false;
-    for (let i=0;i<winningConditions.length;i++) {
-        const [a,b,c] = winningConditions[i];
-        if (tt_gameBoard[a] && tt_gameBoard[a] === tt_gameBoard[b] && tt_gameBoard[b] === tt_gameBoard[c]) {
-            roundWon = true; break;
-        }
-    }
-    if (roundWon) {
-        tt_statusDisplay.textContent = 'Победа: ' + tt_currentPlayer;
-        tt_gameActive = false; return;
-    }
-    if (!tt_gameBoard.includes('')) {
-        tt_statusDisplay.textContent = 'Ничья!'; tt_gameActive = false; return;
-    }
-    tt_currentPlayer = tt_currentPlayer === 'X' ? 'O' : 'X';
-    tt_statusDisplay.textContent = 'Ход: ' + tt_currentPlayer;
-}
-
-function tt_handleCellClick(e) {
-    const idx = parseInt(e.target.getAttribute('data-index'));
-    if (tt_gameBoard[idx] !== '' || !tt_gameActive) return;
-    tt_gameBoard[idx] = tt_currentPlayer;
-    e.target.textContent = tt_currentPlayer;
-    e.target.classList.add(tt_currentPlayer === 'X' ? 'x-mark' : 'o-mark');
-    handleResultValidation();
-}
-
-function initTicTacToe() {
-    tt_statusDisplay = document.getElementById('game-status');
-    tt_cells = document.querySelectorAll('.board .cell');
-    tt_cells.forEach(cell => { cell.textContent = ''; cell.removeEventListener('click', tt_handleCellClick); cell.addEventListener('click', tt_handleCellClick); });
-    document.getElementById('new-game-button').addEventListener('click', () => {
-        tt_gameActive = true; tt_currentPlayer = 'X'; tt_gameBoard = ['', '', '', '', '', '', '', '', '']; tt_statusDisplay.textContent = 'Ход: X';
-        tt_cells.forEach(c => { c.textContent=''; c.classList.remove('x-mark','o-mark'); c.style.backgroundColor=''; });
-    });
-}
-
-// small helper to show notification using existing showNotification if present
 function showMessage(text) {
     try { if (typeof showNotification === 'function') { showNotification(text); return; } } catch(e) {}
     alert(text);
@@ -1971,10 +1919,7 @@ function showMessage(text) {
     <div id="pvp-submenu" class="games-category game-submenu">
         <button class="back-button back-to-main">← Назад</button>
 
-        <div class="category-card" id="open-tictactoe">
-            <h2>Крестики-нолики</h2>
-            <p>Классическая игра для двух игроков</p>
-        </div>
+        
 
         <div class="category-card" id="open-rps">
             <h2>Камень-Ножницы-Бумага</h2>
@@ -2003,11 +1948,7 @@ function showMessage(text) {
     </div>
 
     <!-- Игровые вьюхи -->
-    <div id="game-view-tictactoe" class="game-view-container">
-        <button class="back-button back-to-pvp">← Вернуться к PVP</button>
-        <div class="tic-tac-toe-game">
-            <div id="game-status" class="game-status">Ход: X</div>
-            <div id="board" class="board">
+    <div id="board" class="board">
                 <div class="cell" data-index="0"></div>
                 <div class="cell" data-index="1"></div>
                 <div class="cell" data-index="2"></div>
@@ -2071,11 +2012,7 @@ function showMessage(text) {
             </div>
 
             <!-- Tic-Tac-Toe Game View -->
-            <div id="game-view-tictactoe" class="game-view-container">
-                 <button id="back-to-lobby-button" class="back-button">← Вернуться к играм</button>
-                <div class="tic-tac-toe-game">
-                    <div id="game-status" class="game-status">Ход: X</div>
-                    <div id="board" class="board">
+            <div id="board" class="board">
                         <!-- Ячейки для игры Крестики-нолики (Tic-Tac-Toe) -->
                         <div class="cell" data-index="0"></div>
                         <div class="cell" data-index="1"></div>
