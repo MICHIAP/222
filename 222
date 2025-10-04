@@ -684,8 +684,8 @@
         .bottom-menu-container .deposit-button {
             background-color: var(--tg-theme-button-color, #00e676);
             border-radius: 50%;
-            width: 3rem; 
-            height: 3rem;
+            width: 5rem; 
+            height: 4rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -1521,14 +1521,24 @@
         }
 
         function buySlot(index) {
-            if (slotsTaken[index]) return;
-            const player = getTgUser() || { id: `local_${Math.random()}`, first_name: 'Player', photo_url: null };
-            slotsTaken[index] = { id: player.id, name: player.first_name || player.username || 'Player', avatar: player.photo_url };
-            renderLotterySlots();
-            if (slotsTaken.every(x => x)) {
-                setTimeout(startLottery, 500);
-            }
-        }
+    if (slotsTaken[index]) return; // Если место занято, ничего не делаем
+
+    // Симуляция данных игрока
+    const player = getTgUser() || { id: 'local_' + Math.random().toString(36).substr(2, 6), first_name: 'Player', photo_url: null };
+    const playerObj = { id: player.id, name: player.first_name || player.username || 'Player', avatar: player.photo_url || null };
+
+    slotsTaken[index] = playerObj;
+    renderLotterySlots(); // Перерисовываем слоты, чтобы показать нового участника
+
+    // ПРОВЕРКА: если все слоты заполнены, запускаем лотерею
+    if (slotsTaken.every(slot => slot !== null)) {
+        document.getElementById('lottery-status').textContent = 'Все места заняты! Запускаем рулетку...';
+        // Небольшая задержка, чтобы пользователь увидел, что последний слот занят
+        setTimeout(() => {
+            startLottery();
+        }, 1000); // 1 секунда задержки
+    }
+}
         
         function startLottery() {
             // Простая симуляция выбора победителя
